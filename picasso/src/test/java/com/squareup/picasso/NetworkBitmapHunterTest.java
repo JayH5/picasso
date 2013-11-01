@@ -21,6 +21,7 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import java.io.IOException;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -46,6 +47,7 @@ public class NetworkBitmapHunterTest {
   @Mock Context context;
   @Mock Picasso picasso;
   @Mock Cache cache;
+  @Mock Cache diskCache;
   @Mock Stats stats;
   @Mock Dispatcher dispatcher;
   @Mock Downloader downloader;
@@ -58,7 +60,7 @@ public class NetworkBitmapHunterTest {
   @Test public void doesNotForceLocalCacheOnlyWithAirplaneModeOffAndRetryCount() throws Exception {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.decode(action.getData());
     verify(downloader).load(URI_1, false);
   }
@@ -66,7 +68,7 @@ public class NetworkBitmapHunterTest {
   @Test public void withZeroRetryCountForcesLocalCacheOnly() throws Exception {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.retryCount = 0;
     hunter.decode(action.getData());
     verify(downloader).load(URI_1, true);
@@ -75,7 +77,7 @@ public class NetworkBitmapHunterTest {
   @Test public void shouldRetryTwiceWithAirplaneModeOffAndNoNetworkInfo() throws Exception {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     assertThat(hunter.shouldRetry(false, null)).isTrue();
     assertThat(hunter.shouldRetry(false, null)).isTrue();
     assertThat(hunter.shouldRetry(false, null)).isFalse();
@@ -84,7 +86,7 @@ public class NetworkBitmapHunterTest {
   @Test public void shouldRetryWithUnknownNetworkInfo() throws Exception {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     assertThat(hunter.shouldRetry(false, null)).isTrue();
     assertThat(hunter.shouldRetry(true, null)).isTrue();
   }
@@ -94,7 +96,7 @@ public class NetworkBitmapHunterTest {
     NetworkInfo info = mockNetworkInfo();
     when(info.isConnectedOrConnecting()).thenReturn(true);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     assertThat(hunter.shouldRetry(false, info)).isTrue();
     assertThat(hunter.shouldRetry(true, info)).isTrue();
   }
@@ -104,7 +106,7 @@ public class NetworkBitmapHunterTest {
     NetworkInfo info = mockNetworkInfo();
     when(info.isConnectedOrConnecting()).thenReturn(false);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     assertThat(hunter.shouldRetry(false, info)).isFalse();
     assertThat(hunter.shouldRetry(true, info)).isFalse();
   }
@@ -118,7 +120,8 @@ public class NetworkBitmapHunterTest {
     };
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, bitmapDownloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action,
+            bitmapDownloader);
 
     Bitmap actual = hunter.decode(action.getData());
     assertThat(actual).isSameAs(expected);

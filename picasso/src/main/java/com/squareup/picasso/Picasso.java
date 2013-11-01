@@ -110,6 +110,7 @@ public class Picasso {
   final Context context;
   final Dispatcher dispatcher;
   final Cache cache;
+  final Cache diskCache;
   final Stats stats;
   final Map<Object, Action> targetToAction;
   final Map<ImageView, DeferredRequestCreator> targetToDeferredRequestCreator;
@@ -118,11 +119,12 @@ public class Picasso {
   boolean debugging;
   boolean shutdown;
 
-  Picasso(Context context, Dispatcher dispatcher, Cache cache, Listener listener,
+  Picasso(Context context, Dispatcher dispatcher, Cache cache, Cache diskCache, Listener listener,
       RequestTransformer requestTransformer, Stats stats, boolean debugging) {
     this.context = context;
     this.dispatcher = dispatcher;
     this.cache = cache;
+    this.diskCache = diskCache;
     this.listener = listener;
     this.requestTransformer = requestTransformer;
     this.stats = stats;
@@ -399,6 +401,7 @@ public class Picasso {
     private Downloader downloader;
     private ExecutorService service;
     private Cache cache;
+    private Cache diskCache;
     private Listener listener;
     private RequestTransformer transformer;
     private boolean debugging;
@@ -447,6 +450,18 @@ public class Picasso {
       return this;
     }
 
+    /** Specify the disk cache used for the most recent images. */
+    public Builder diskCache(Cache diskCache) {
+      if (diskCache == null) {
+        throw new IllegalArgumentException("Disk cache must not be null.");
+      }
+      if (this.diskCache != null) {
+        throw new IllegalStateException("Disk cache already set.");
+      }
+      this.diskCache = diskCache;
+      return this;
+    }
+
     /** Specify a listener for interesting events. */
     public Builder listener(Listener listener) {
       if (listener == null) {
@@ -492,6 +507,9 @@ public class Picasso {
       if (cache == null) {
         cache = new LruCache(context);
       }
+      if (diskCache == null) {
+        diskCache = Cache.NONE;
+      }
       if (service == null) {
         service = new PicassoExecutorService();
       }
@@ -501,9 +519,11 @@ public class Picasso {
 
       Stats stats = new Stats(cache);
 
-      Dispatcher dispatcher = new Dispatcher(context, service, HANDLER, downloader, cache, stats);
+      Dispatcher dispatcher = new Dispatcher(context, service, HANDLER, downloader, cache,
+          diskCache, stats);
 
-      return new Picasso(context, dispatcher, cache, listener, transformer, stats, debugging);
+      return new Picasso(context, dispatcher, cache, diskCache, listener, transformer, stats,
+          debugging);
     }
   }
 

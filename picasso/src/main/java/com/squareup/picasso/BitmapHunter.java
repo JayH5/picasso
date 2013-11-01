@@ -30,6 +30,7 @@ import static android.content.ContentResolver.SCHEME_ANDROID_RESOURCE;
 import static android.content.ContentResolver.SCHEME_CONTENT;
 import static android.content.ContentResolver.SCHEME_FILE;
 import static android.provider.ContactsContract.Contacts;
+import static com.squareup.picasso.Picasso.LoadedFrom.DISK;
 import static com.squareup.picasso.Picasso.LoadedFrom.MEMORY;
 
 abstract class BitmapHunter implements Runnable {
@@ -47,6 +48,7 @@ abstract class BitmapHunter implements Runnable {
   final Picasso picasso;
   final Dispatcher dispatcher;
   final Cache cache;
+  final Cache diskCache;
   final Stats stats;
   final String key;
   final Request data;
@@ -59,10 +61,12 @@ abstract class BitmapHunter implements Runnable {
   Exception exception;
   int exifRotation; // Determined during decoding of original resource.
 
-  BitmapHunter(Picasso picasso, Dispatcher dispatcher, Cache cache, Stats stats, Action action) {
+  BitmapHunter(Picasso picasso, Dispatcher dispatcher, Cache cache, Cache diskCache, Stats stats,
+      Action action) {
     this.picasso = picasso;
     this.dispatcher = dispatcher;
     this.cache = cache;
+    this.diskCache = diskCache;
     this.stats = stats;
     this.key = action.getKey();
     this.data = action.getData();
@@ -111,6 +115,13 @@ abstract class BitmapHunter implements Runnable {
       }
     }
 
+    bitmap = diskCache.get(key);
+    if (bitmap != null) {
+      stats.dispatchCacheHit();
+      loadedFrom = DISK;
+      return bitmap;
+    }
+
     bitmap = decode(data);
 
     if (bitmap != null) {
@@ -126,6 +137,7 @@ abstract class BitmapHunter implements Runnable {
         }
         stats.dispatchBitmapTransformed(bitmap);
       }
+      diskCache.set(key, bitmap);
     }
 
     return bitmap;
@@ -180,28 +192,33 @@ abstract class BitmapHunter implements Runnable {
   }
 
   static BitmapHunter forRequest(Context context, Picasso picasso, Dispatcher dispatcher,
-      Cache cache, Stats stats, Action action, Downloader downloader) {
+      Cache cache, Cache diskCache, Stats stats, Action action, Downloader downloader) {
     if (action.getData().resourceId != 0) {
-      return new ResourceBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+      return new ResourceBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
+          action);
     }
     Uri uri = action.getData().uri;
     String scheme = uri.getScheme();
     if (SCHEME_CONTENT.equals(scheme)) {
       if (Contacts.CONTENT_URI.getHost().equals(uri.getHost()) //
           && !uri.getPathSegments().contains(Contacts.Photo.CONTENT_DIRECTORY)) {
-        return new ContactsPhotoBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+        return new ContactsPhotoBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
+            action);
       } else {
-        return new ContentProviderBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+        return new ContentProviderBitmapHunter(context, picasso, dispatcher, cache, diskCache,
+            stats, action);
       }
     } else if (SCHEME_FILE.equals(scheme)) {
       if (!uri.getPathSegments().isEmpty() && ANDROID_ASSET.equals(uri.getPathSegments().get(0))) {
-        return new AssetBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+        return new AssetBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats, action);
       }
-      return new FileBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+      return new FileBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats, action);
     } else if (SCHEME_ANDROID_RESOURCE.equals(scheme)) {
-      return new ResourceBitmapHunter(context, picasso, dispatcher, cache, stats, action);
+      return new ResourceBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
+          action);
     } else {
-      return new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+      return new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action,
+          downloader);
     }
   }
 

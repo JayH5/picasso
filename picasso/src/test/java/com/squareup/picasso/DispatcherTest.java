@@ -55,12 +55,14 @@ public class DispatcherTest {
   @Mock Handler mainThreadHandler;
   @Mock Downloader downloader;
   @Mock Cache cache;
+  @Mock Cache diskCache;
   @Mock Stats stats;
   private Dispatcher dispatcher;
 
   @Before public void setUp() throws Exception {
     initMocks(this);
-    dispatcher = new Dispatcher(context, service, mainThreadHandler, downloader, cache, stats);
+    dispatcher =
+        new Dispatcher(context, service, mainThreadHandler, downloader, cache, diskCache, stats);
   }
 
   @Test public void shutdownStopsService() throws Exception {
@@ -258,7 +260,7 @@ public class DispatcherTest {
       throws Exception {
     PicassoExecutorService service = mock(PicassoExecutorService.class);
     Dispatcher dispatcher =
-        new Dispatcher(context, service, mainThreadHandler, downloader, cache, stats);
+        new Dispatcher(context, service, mainThreadHandler, downloader, cache, diskCache, stats);
     NetworkInfo info = mockNetworkInfo();
     when(info.isConnectedOrConnecting()).thenReturn(true);
     dispatcher.performNetworkStateChange(info);

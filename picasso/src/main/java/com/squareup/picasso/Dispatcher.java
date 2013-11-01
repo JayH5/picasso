@@ -66,6 +66,7 @@ class Dispatcher {
   final Handler handler;
   final Handler mainThreadHandler;
   final Cache cache;
+  final Cache diskCache;
   final Stats stats;
   final List<BitmapHunter> batch;
   final NetworkBroadcastReceiver receiver;
@@ -74,7 +75,7 @@ class Dispatcher {
   boolean airplaneMode;
 
   Dispatcher(Context context, ExecutorService service, Handler mainThreadHandler,
-      Downloader downloader, Cache cache, Stats stats) {
+      Downloader downloader, Cache cache, Cache diskCache, Stats stats) {
     this.dispatcherThread = new DispatcherThread();
     this.dispatcherThread.start();
     this.context = context;
@@ -84,6 +85,7 @@ class Dispatcher {
     this.downloader = downloader;
     this.mainThreadHandler = mainThreadHandler;
     this.cache = cache;
+    this.diskCache = diskCache;
     this.stats = stats;
     this.batch = new ArrayList<BitmapHunter>(4);
     this.airplaneMode = Utils.isAirplaneModeOn(this.context);
@@ -137,7 +139,8 @@ class Dispatcher {
       return;
     }
 
-    hunter = forRequest(context, action.getPicasso(), this, cache, stats, action, downloader);
+    hunter = forRequest(context, action.getPicasso(), this, cache, diskCache, stats, action,
+        downloader);
     hunter.future = service.submit(hunter);
     hunterMap.put(action.getKey(), hunter);
   }

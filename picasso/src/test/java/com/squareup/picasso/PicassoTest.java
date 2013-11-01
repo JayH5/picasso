@@ -60,6 +60,7 @@ public class PicassoTest {
   @Mock Dispatcher dispatcher;
   @Mock Picasso.RequestTransformer transformer;
   @Mock Cache cache;
+  @Mock Cache diskCache;
   @Mock Listener listener;
   @Mock Stats stats;
 
@@ -67,7 +68,8 @@ public class PicassoTest {
 
   @Before public void setUp() {
     initMocks(this);
-    picasso = new Picasso(context, dispatcher, cache, listener, transformer, stats, false);
+    picasso =
+        new Picasso(context, dispatcher, cache, diskCache, listener, transformer, stats, false);
   }
 
   @Test public void submitWithNullTargetInvokesDispatcher() throws Exception {
