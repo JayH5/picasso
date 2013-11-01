@@ -21,7 +21,6 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import java.io.IOException;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
