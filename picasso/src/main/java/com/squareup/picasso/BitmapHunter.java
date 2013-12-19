@@ -35,12 +35,6 @@ import static com.squareup.picasso.Picasso.LoadedFrom.MEMORY;
 
 abstract class BitmapHunter implements Runnable {
 
-  /**
-   * Global lock for bitmap decoding to ensure that we are only are decoding one at a time. Since
-   * this will only ever happen in background threads we help avoid excessive memory thrashing as
-   * well as potential OOMs. Shamelessly stolen from Volley.
-   */
-  private static final Object DECODE_LOCK = new Object();
   private static final String ANDROID_ASSET = "android_asset";
   protected static final int ASSET_PREFIX_LENGTH =
       (SCHEME_FILE + ":///" + ANDROID_ASSET + "/").length();
@@ -127,7 +121,7 @@ abstract class BitmapHunter implements Runnable {
     if (bitmap != null) {
       stats.dispatchBitmapDecoded(bitmap);
       if (data.needsTransformation() || exifRotation != 0) {
-        synchronized (DECODE_LOCK) {
+        synchronized (Picasso.DECODE_LOCK) {
           if (data.needsMatrixTransform() || exifRotation != 0) {
             bitmap = transformResult(data, bitmap, exifRotation);
           }

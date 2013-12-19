@@ -45,6 +45,13 @@ import static com.squareup.picasso.Utils.THREAD_PREFIX;
  */
 public class Picasso {
 
+  /**
+   * Global lock for bitmap decoding to ensure that we are only are decoding one at a time. Since
+   * this will only ever happen in background threads we help avoid excessive memory thrashing as
+   * well as potential OOMs. Shamelessly stolen from Volley.
+   */
+  public static final Object DECODE_LOCK = new Object();
+
   /** Callbacks for Picasso events. */
   public interface Listener {
     /**
