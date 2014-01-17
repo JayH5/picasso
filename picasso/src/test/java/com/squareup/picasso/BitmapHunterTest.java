@@ -44,6 +44,8 @@ import static com.squareup.picasso.TestUtils.CONTENT_1_URL;
 import static com.squareup.picasso.TestUtils.CONTENT_KEY_1;
 import static com.squareup.picasso.TestUtils.FILE_1_URL;
 import static com.squareup.picasso.TestUtils.FILE_KEY_1;
+import static com.squareup.picasso.TestUtils.MEDIA_STORE_CONTENT_1_URL;
+import static com.squareup.picasso.TestUtils.MEDIA_STORE_CONTENT_KEY_1;
 import static com.squareup.picasso.TestUtils.RESOURCE_ID_1;
 import static com.squareup.picasso.TestUtils.RESOURCE_ID_KEY_1;
 import static com.squareup.picasso.TestUtils.URI_1;
@@ -99,6 +101,23 @@ public class BitmapHunterTest {
         new TestableBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action);
     hunter.run();
     verify(dispatcher).dispatchFailed(hunter);
+  }
+
+  @Test public void outOfMemoryDispatchFailed() throws Exception {
+    when(stats.createSnapshot()).thenReturn(mock(StatsSnapshot.class));
+
+    Action action = mockAction(URI_KEY_1, URI_1);
+    BitmapHunter hunter = new OOMBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action);
+    try {
+      hunter.run();
+    } catch (Throwable t) {
+      Exception exception = hunter.getException();
+      verify(dispatcher).dispatchFailed(hunter);
+      verify(stats).createSnapshot();
+      assertThat(hunter.getResult()).isNull();
+      assertThat(exception).isNotNull();
+      assertThat(exception.getCause()).isInstanceOf(OutOfMemoryError.class);
+    }
   }
 
   @Test public void runWithIoExceptionDispatchRetry() throws Exception {
@@ -168,7 +187,14 @@ public class BitmapHunterTest {
     Action action = mockAction(CONTENT_KEY_1, CONTENT_1_URL);
     BitmapHunter hunter =
         forRequest(context, picasso, dispatcher, cache, diskCache, stats, action, downloader);
-    assertThat(hunter).isInstanceOf(ContentProviderBitmapHunter.class);
+    assertThat(hunter).isInstanceOf(ContentStreamBitmapHunter.class);
+  }
+
+  @Test public void forMediaStoreRequest() throws Exception {
+    Action action = mockAction(MEDIA_STORE_CONTENT_KEY_1, MEDIA_STORE_CONTENT_1_URL);
+    BitmapHunter hunter =
+        forRequest(context, picasso, dispatcher, cache, diskCache, stats, action, downloader);
+    assertThat(hunter).isInstanceOf(MediaStoreBitmapHunter.class);
   }
 
   @Test public void forContactsPhotoRequest() throws Exception {
@@ -448,6 +474,18 @@ public class BitmapHunterTest {
 
     @Override Picasso.LoadedFrom getLoadedFrom() {
       return MEMORY;
+    }
+  }
+
+  private static class OOMBitmapHunter extends TestableBitmapHunter {
+
+    OOMBitmapHunter(Picasso picasso, Dispatcher dispatcher, Cache cache, Cache diskCache,
+        Stats stats, Action action) {
+      super(picasso, dispatcher, cache, diskCache, stats, action);
+    }
+
+    @Override Bitmap decode(Request data) throws IOException {
+      throw new OutOfMemoryError();
     }
   }
 }

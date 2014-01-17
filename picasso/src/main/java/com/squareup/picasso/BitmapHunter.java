@@ -21,7 +21,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.provider.MediaStore;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -87,6 +90,11 @@ abstract class BitmapHunter implements Runnable {
     } catch (IOException e) {
       exception = e;
       dispatcher.dispatchRetry(this);
+    } catch (OutOfMemoryError e) {
+      StringWriter writer = new StringWriter();
+      stats.createSnapshot().dump(new PrintWriter(writer));
+      exception = new RuntimeException(writer.toString(), e);
+      dispatcher.dispatchFailed(this);
     } catch (Exception e) {
       exception = e;
       dispatcher.dispatchFailed(this);
@@ -198,9 +206,12 @@ abstract class BitmapHunter implements Runnable {
           && !uri.getPathSegments().contains(Contacts.Photo.CONTENT_DIRECTORY)) {
         return new ContactsPhotoBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
             action);
+      } else if (MediaStore.AUTHORITY.equals(uri.getAuthority())) {
+        return new MediaStoreBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
+            action);
       } else {
-        return new ContentProviderBitmapHunter(context, picasso, dispatcher, cache, diskCache,
-            stats, action);
+        return new ContentStreamBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
+            action);
       }
     } else if (SCHEME_FILE.equals(scheme)) {
       if (!uri.getPathSegments().isEmpty() && ANDROID_ASSET.equals(uri.getPathSegments().get(0))) {
@@ -217,8 +228,11 @@ abstract class BitmapHunter implements Runnable {
   }
 
   static void calculateInSampleSize(int reqWidth, int reqHeight, BitmapFactory.Options options) {
-    final int height = options.outHeight;
-    final int width = options.outWidth;
+    calculateInSampleSize(reqWidth, reqHeight, options.outWidth, options.outHeight, options);
+  }
+
+  static void calculateInSampleSize(int reqWidth, int reqHeight, int width, int height,
+      BitmapFactory.Options options) {
     int sampleSize = 1;
     if (height > reqHeight || width > reqWidth) {
       final int heightRatio = Math.round((float) height / (float) reqHeight);
