@@ -20,8 +20,9 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.widget.ImageView;
-import java.io.IOException;
 import org.jetbrains.annotations.TestOnly;
+
+import java.io.IOException;
 
 import static com.squareup.picasso.BitmapHunter.forRequest;
 import static com.squareup.picasso.Picasso.LoadedFrom.MEMORY;
@@ -174,6 +175,12 @@ public class RequestCreator {
     return this;
   }
 
+  /** Decode the image using the specified config. */
+  public RequestCreator config(Bitmap.Config config) {
+    data.config(config);
+    return this;
+  }
+
   /**
    * Add a custom transformation to be applied to the image.
    * <p/>
@@ -212,7 +219,7 @@ public class RequestCreator {
     }
 
     Request finalData = picasso.transformRequest(data.build());
-    String key = createKey(finalData);
+    String key = createKey(finalData, new StringBuilder());
 
     Action action = new GetAction(picasso, finalData, skipMemoryCache, key);
     return forRequest(picasso.context, picasso, picasso.dispatcher, picasso.cache,

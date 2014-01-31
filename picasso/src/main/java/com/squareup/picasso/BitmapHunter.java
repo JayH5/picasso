@@ -33,14 +33,11 @@ import static android.content.ContentResolver.SCHEME_ANDROID_RESOURCE;
 import static android.content.ContentResolver.SCHEME_CONTENT;
 import static android.content.ContentResolver.SCHEME_FILE;
 import static android.provider.ContactsContract.Contacts;
+import static com.squareup.picasso.AssetBitmapHunter.ANDROID_ASSET;
 import static com.squareup.picasso.Picasso.LoadedFrom.DISK;
 import static com.squareup.picasso.Picasso.LoadedFrom.MEMORY;
 
 abstract class BitmapHunter implements Runnable {
-
-  private static final String ANDROID_ASSET = "android_asset";
-  protected static final int ASSET_PREFIX_LENGTH =
-      (SCHEME_FILE + ":///" + ANDROID_ASSET + "/").length();
 
   final Picasso picasso;
   final Dispatcher dispatcher;
@@ -87,6 +84,9 @@ abstract class BitmapHunter implements Runnable {
       } else {
         dispatcher.dispatchComplete(this);
       }
+    } catch (Downloader.ResponseException e) {
+      exception = e;
+      dispatcher.dispatchFailed(this);
     } catch (IOException e) {
       exception = e;
       dispatcher.dispatchRetry(this);
@@ -225,6 +225,14 @@ abstract class BitmapHunter implements Runnable {
       return new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action,
           downloader);
     }
+  }
+
+  static BitmapFactory.Options createBitmapOptions(Request data) {
+    BitmapFactory.Options options = new BitmapFactory.Options();
+    if (data.config != null) {
+      options.inPreferredConfig = data.config;
+    }
+    return options;
   }
 
   static void calculateInSampleSize(int reqWidth, int reqHeight, BitmapFactory.Options options) {
