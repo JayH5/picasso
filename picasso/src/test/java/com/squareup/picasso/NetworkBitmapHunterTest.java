@@ -117,7 +117,7 @@ public class NetworkBitmapHunterTest {
     when(downloader.load(any(Uri.class), anyBoolean())).thenReturn(response);
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.decode(action.getData());
     verify(stats).dispatchDownloadFinished(response.contentLength);
   }
@@ -127,7 +127,7 @@ public class NetworkBitmapHunterTest {
     when(downloader.load(any(Uri.class), anyBoolean())).thenReturn(response);
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.decode(action.getData());
     verifyZeroInteractions(stats);
   }
@@ -137,7 +137,7 @@ public class NetworkBitmapHunterTest {
     when(downloader.load(any(Uri.class), anyBoolean())).thenReturn(response);
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
-        new NetworkBitmapHunter(picasso, dispatcher, cache, stats, action, downloader);
+        new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.decode(action.getData());
     verifyZeroInteractions(stats);
   }
