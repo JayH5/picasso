@@ -74,8 +74,8 @@ public class RemoteViewsActionTest {
   }
 
   private Picasso createPicasso() {
-    return new Picasso(Robolectric.application, mock(Dispatcher.class), Cache.NONE, null, IDENTITY,
-        mock(Stats.class), true);
+    return new Picasso(Robolectric.application, mock(Dispatcher.class), Cache.NONE, Cache.NONE,
+        null, IDENTITY, mock(Stats.class), true);
   }
 
   static class TestableRemoteViewsAction extends RemoteViewsAction {
