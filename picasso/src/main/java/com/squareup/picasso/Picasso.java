@@ -183,6 +183,7 @@ public class Picasso {
    * @see #load(Uri)
    * @see #load(File)
    * @see #load(int)
+   * @throws IllegalArgumentException if {@code path} is empty or blank string.
    */
   public RequestCreator load(String path) {
     if (path == null) {
@@ -200,6 +201,8 @@ public class Picasso {
    * <p>
    * Passing {@code null} as a {@code file} will not trigger any request but will set a
    * placeholder, if one is specified.
+   * <p>
+   * Equivalent to calling {@link #load(Uri) load(Uri.fromFile(file))}.
    *
    * @see #load(Uri)
    * @see #load(String)
