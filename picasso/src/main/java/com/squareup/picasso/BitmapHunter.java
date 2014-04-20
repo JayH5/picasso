@@ -191,6 +191,10 @@ abstract class BitmapHunter implements Runnable {
     return false;
   }
 
+  boolean supportsReplay() {
+    return false;
+  }
+
   Bitmap getResult() {
     return result;
   }

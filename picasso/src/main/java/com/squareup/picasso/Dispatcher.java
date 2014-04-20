@@ -26,11 +26,12 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 
 import static android.content.Context.CONNECTIVITY_SERVICE;
@@ -64,6 +65,7 @@ class Dispatcher {
   final ExecutorService service;
   final Downloader downloader;
   final Map<String, BitmapHunter> hunterMap;
+  final Map<Object, Action> failedActions;
   final Handler handler;
   final Handler mainThreadHandler;
   final Cache cache;
@@ -82,6 +84,7 @@ class Dispatcher {
     this.context = context;
     this.service = service;
     this.hunterMap = new LinkedHashMap<String, BitmapHunter>();
+    this.failedActions = new WeakHashMap<Object, Action>();
     this.handler = new DispatcherHandler(dispatcherThread.getLooper(), this);
     this.downloader = downloader;
     this.mainThreadHandler = mainThreadHandler;
@@ -144,6 +147,7 @@ class Dispatcher {
         downloader);
     hunter.future = service.submit(hunter);
     hunterMap.put(action.getKey(), hunter);
+    failedActions.remove(action.getTarget());
   }
 
   void performCancel(Action action) {
@@ -155,6 +159,7 @@ class Dispatcher {
         hunterMap.remove(key);
       }
     }
+    failedActions.remove(action.getTarget());
   }
 
   void performRetry(BitmapHunter hunter) {
@@ -165,9 +170,23 @@ class Dispatcher {
       return;
     }
 
-    if (hunter.shouldRetry(airplaneMode, networkInfo)) {
-      hunter.future = service.submit(hunter);
+    boolean hasConnectivity = networkInfo != null && networkInfo.isConnectedOrConnecting();
+    boolean shouldRetryHunter = hunter.shouldRetry(airplaneMode, networkInfo);
+    boolean supportsReplay = hunter.supportsReplay();
+
+    if (shouldRetryHunter) {
+      if (hasConnectivity) {
+        hunter.future = service.submit(hunter);
+      } else {
+        if (supportsReplay) {
+          markForReplay(hunter);
+        }
+        performError(hunter);
+      }
     } else {
+      if (supportsReplay) {
+        markForReplay(hunter);
+      }
       performError(hunter);
     }
   }
@@ -199,6 +218,36 @@ class Dispatcher {
     networkInfo = info;
     if (service instanceof PicassoExecutorService) {
       ((PicassoExecutorService) service).adjustThreadCount(info);
+    }
+    // Intentionally check only if isConnected() here before we flush out failed actions.
+    if (networkInfo != null && networkInfo.isConnected()) {
+      flushFailedActions();
+    }
+  }
+
+  private void flushFailedActions() {
+    if (!failedActions.isEmpty()) {
+      Iterator<Action> iterator = failedActions.values().iterator();
+      while (iterator.hasNext()) {
+        Action action = iterator.next();
+        iterator.remove();
+        performSubmit(action);
+      }
+    }
+  }
+
+  private void markForReplay(BitmapHunter hunter) {
+    Action action = hunter.getAction();
+    if (action != null) {
+      failedActions.put(action.getTarget(), action);
+    }
+    List<Action> joined = hunter.getActions();
+    if (joined != null) {
+      //noinspection ForLoopReplaceableByForEach
+      for (int i = 0, n = joined.size(); i < n; i++) {
+        Action join = joined.get(i);
+        failedActions.put(join.getTarget(), join);
+      }
     }
   }
 

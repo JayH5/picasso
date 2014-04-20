@@ -36,10 +36,11 @@ import static com.squareup.picasso.Action.RequestWeakReference;
 import static com.squareup.picasso.Dispatcher.HUNTER_BATCH_COMPLETE;
 import static com.squareup.picasso.Dispatcher.REQUEST_GCED;
 import static com.squareup.picasso.Utils.THREAD_PREFIX;
+import static com.squareup.picasso.Utils.checkMain;
 
 /**
  * Image downloading, transformation, and caching manager.
- * <p/>
+ * <p>
  * Use {@link #with(android.content.Context)} for the global singleton instance or construct your
  * own instance with {@link Builder}.
  */
@@ -301,6 +302,7 @@ public class Picasso {
   void enqueueAndSubmit(Action action) {
     Object target = action.getTarget();
     if (target != null) {
+      // This will also check we are on the main thread.
       cancelExistingRequest(target);
       targetToAction.put(target, action);
     }
@@ -370,6 +372,7 @@ public class Picasso {
   }
 
   private void cancelExistingRequest(Object target) {
+    checkMain();
     Action action = targetToAction.remove(target);
     if (action != null) {
       action.cancel();
