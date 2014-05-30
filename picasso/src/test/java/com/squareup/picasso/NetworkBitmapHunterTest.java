@@ -63,7 +63,7 @@ public class NetworkBitmapHunterTest {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
-    hunter.decode(action.getData());
+    hunter.decode(action.getRequest());
     verify(downloader).load(URI_1, false);
   }
 
@@ -72,7 +72,7 @@ public class NetworkBitmapHunterTest {
     NetworkBitmapHunter hunter =
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     hunter.retryCount = 0;
-    hunter.decode(action.getData());
+    hunter.decode(action.getRequest());
     verify(downloader).load(URI_1, true);
   }
 
@@ -119,7 +119,7 @@ public class NetworkBitmapHunterTest {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
-    hunter.decode(action.getData());
+    hunter.decode(action.getRequest());
     verify(stats).dispatchDownloadFinished(response.contentLength);
   }
 
@@ -130,7 +130,7 @@ public class NetworkBitmapHunterTest {
     NetworkBitmapHunter hunter =
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
     try {
-      hunter.decode(action.getData());
+      hunter.decode(action.getRequest());
       fail("Should have thrown IOException.");
     } catch(IOException expected) {
       verifyZeroInteractions(stats);
@@ -143,7 +143,7 @@ public class NetworkBitmapHunterTest {
     Action action = TestUtils.mockAction(URI_KEY_1, URI_1);
     NetworkBitmapHunter hunter =
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action, downloader);
-    hunter.decode(action.getData());
+    hunter.decode(action.getRequest());
     verifyZeroInteractions(stats);
   }
 
@@ -159,7 +159,7 @@ public class NetworkBitmapHunterTest {
         new NetworkBitmapHunter(picasso, dispatcher, cache, diskCache, stats, action,
             bitmapDownloader);
 
-    Bitmap actual = hunter.decode(action.getData());
+    Bitmap actual = hunter.decode(action.getRequest());
     assertThat(actual).isSameAs(expected);
   }
 }

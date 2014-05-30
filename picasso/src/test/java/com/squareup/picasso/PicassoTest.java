@@ -69,8 +69,8 @@ public class PicassoTest {
 
   @Before public void setUp() {
     initMocks(this);
-    picasso =
-        new Picasso(context, dispatcher, cache, diskCache, listener, transformer, stats, false);
+    picasso = new Picasso(context, dispatcher, cache, diskCache, listener, transformer, stats,
+        false, false);
   }
 
   @Test public void submitWithNullTargetInvokesDispatcher() throws Exception {

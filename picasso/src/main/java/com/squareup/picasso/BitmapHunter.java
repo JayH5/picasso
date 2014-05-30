@@ -36,6 +36,14 @@ import static android.provider.ContactsContract.Contacts;
 import static com.squareup.picasso.AssetBitmapHunter.ANDROID_ASSET;
 import static com.squareup.picasso.Picasso.LoadedFrom.DISK;
 import static com.squareup.picasso.Picasso.LoadedFrom.MEMORY;
+import static com.squareup.picasso.Utils.OWNER_HUNTER;
+import static com.squareup.picasso.Utils.VERB_DECODED;
+import static com.squareup.picasso.Utils.VERB_EXECUTING;
+import static com.squareup.picasso.Utils.VERB_JOINED;
+import static com.squareup.picasso.Utils.VERB_REMOVED;
+import static com.squareup.picasso.Utils.VERB_TRANSFORMED;
+import static com.squareup.picasso.Utils.getLogIdsForHunter;
+import static com.squareup.picasso.Utils.log;
 
 abstract class BitmapHunter implements Runnable {
 
@@ -70,7 +78,7 @@ abstract class BitmapHunter implements Runnable {
     this.diskCache = diskCache;
     this.stats = stats;
     this.key = action.getKey();
-    this.data = action.getData();
+    this.data = action.getRequest();
     this.skipMemoryCache = action.skipCache;
     this.action = action;
   }
@@ -82,6 +90,10 @@ abstract class BitmapHunter implements Runnable {
   @Override public void run() {
     try {
       updateThreadName(data);
+
+      if (picasso.loggingEnabled) {
+        log(OWNER_HUNTER, VERB_EXECUTING, getLogIdsForHunter(this));
+      }
 
       result = hunt();
 
@@ -119,6 +131,9 @@ abstract class BitmapHunter implements Runnable {
       if (bitmap != null) {
         stats.dispatchCacheHit();
         loadedFrom = MEMORY;
+        if (picasso.loggingEnabled) {
+          log(OWNER_HUNTER, VERB_DECODED, data.logId(), "from cache");
+        }
         return bitmap;
       }
     }
@@ -133,14 +148,23 @@ abstract class BitmapHunter implements Runnable {
     bitmap = decode(data);
 
     if (bitmap != null) {
+      if (picasso.loggingEnabled) {
+        log(OWNER_HUNTER, VERB_DECODED, data.logId());
+      }
       stats.dispatchBitmapDecoded(bitmap);
       if (data.needsTransformation() || exifRotation != 0) {
         synchronized (Picasso.DECODE_LOCK) {
           if (data.needsMatrixTransform() || exifRotation != 0) {
             bitmap = transformResult(data, bitmap, exifRotation);
+            if (picasso.loggingEnabled) {
+              log(OWNER_HUNTER, VERB_TRANSFORMED, data.logId());
+            }
           }
           if (data.hasCustomTransformations()) {
             bitmap = applyCustomTransformations(data.transformations, bitmap);
+            if (picasso.loggingEnabled) {
+              log(OWNER_HUNTER, VERB_TRANSFORMED, data.logId(), "from custom transformations");
+            }
           }
         }
         if (bitmap != null) {
@@ -154,14 +178,30 @@ abstract class BitmapHunter implements Runnable {
   }
 
   void attach(Action action) {
+    boolean loggingEnabled = picasso.loggingEnabled;
+    Request request = action.request;
+
     if (this.action == null) {
       this.action = action;
+      if (loggingEnabled) {
+        if (actions == null || actions.isEmpty()) {
+          log(OWNER_HUNTER, VERB_JOINED, request.logId(), "to empty hunter");
+        } else {
+          log(OWNER_HUNTER, VERB_JOINED, request.logId(), getLogIdsForHunter(this, "to "));
+        }
+      }
       return;
     }
+
     if (actions == null) {
       actions = new ArrayList<Action>(3);
     }
+
     actions.add(action);
+
+    if (loggingEnabled) {
+      log(OWNER_HUNTER, VERB_JOINED, request.logId(), getLogIdsForHunter(this, "to "));
+    }
   }
 
   void detach(Action action) {
@@ -169,6 +209,10 @@ abstract class BitmapHunter implements Runnable {
       this.action = null;
     } else if (actions != null) {
       actions.remove(action);
+    }
+
+    if (picasso.loggingEnabled) {
+      log(OWNER_HUNTER, VERB_REMOVED, action.request.logId(), getLogIdsForHunter(this, "from "));
     }
   }
 
@@ -211,6 +255,10 @@ abstract class BitmapHunter implements Runnable {
     return action;
   }
 
+  Picasso getPicasso() {
+    return picasso;
+  }
+
   List<Action> getActions() {
     return actions;
   }
@@ -235,11 +283,11 @@ abstract class BitmapHunter implements Runnable {
 
   static BitmapHunter forRequest(Context context, Picasso picasso, Dispatcher dispatcher,
       Cache cache, Cache diskCache, Stats stats, Action action, Downloader downloader) {
-    if (action.getData().resourceId != 0) {
+    if (action.getRequest().resourceId != 0) {
       return new ResourceBitmapHunter(context, picasso, dispatcher, cache, diskCache, stats,
           action);
     }
-    Uri uri = action.getData().uri;
+    Uri uri = action.getRequest().uri;
     String scheme = uri.getScheme();
     if (SCHEME_CONTENT.equals(scheme)) {
       if (Contacts.CONTENT_URI.getHost().equals(uri.getHost()) //
