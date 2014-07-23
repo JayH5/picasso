@@ -345,8 +345,8 @@ abstract class BitmapHunter implements Runnable {
       BitmapFactory.Options options) {
     int sampleSize = 1;
     if (height > reqHeight || width > reqWidth) {
-      final int heightRatio = Math.round((float) height / (float) reqHeight);
-      final int widthRatio = Math.round((float) width / (float) reqWidth);
+      final int heightRatio = (int) Math.floor((float) height / (float) reqHeight);
+      final int widthRatio = (int) Math.floor((float) width / (float) reqWidth);
       sampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
     }
     options.inSampleSize = sampleSize;
@@ -405,9 +405,8 @@ abstract class BitmapHunter implements Runnable {
   }
 
   static Bitmap transformResult(Request data, Bitmap result, int exifRotation) {
-    boolean swapDimens = exifRotation == 90 || exifRotation == 270;
-    int inWidth = swapDimens ? result.getHeight() : result.getWidth();
-    int inHeight = swapDimens ? result.getWidth() : result.getHeight();
+    int inWidth = result.getWidth();
+    int inHeight = result.getHeight();
 
     int drawX = 0;
     int drawY = 0;

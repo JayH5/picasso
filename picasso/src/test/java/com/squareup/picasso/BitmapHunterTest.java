@@ -20,6 +20,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.FutureTask;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,12 +32,9 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowBitmap;
 import org.robolectric.shadows.ShadowMatrix;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.FutureTask;
-
 import static android.graphics.Bitmap.Config.ARGB_8888;
 import static android.graphics.Bitmap.Config.RGB_565;
+import static com.squareup.picasso.BitmapHunter.calculateInSampleSize;
 import static com.squareup.picasso.BitmapHunter.createBitmapOptions;
 import static com.squareup.picasso.BitmapHunter.forRequest;
 import static com.squareup.picasso.BitmapHunter.requiresInSampleSize;
@@ -61,6 +61,7 @@ import static com.squareup.picasso.TestUtils.URI_1;
 import static com.squareup.picasso.TestUtils.URI_KEY_1;
 import static com.squareup.picasso.TestUtils.mockAction;
 import static com.squareup.picasso.TestUtils.mockImageViewTarget;
+import static com.squareup.picasso.TestUtils.mockPicasso;
 import static org.fest.assertions.api.ANDROID.assertThat;
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.fest.assertions.api.Assertions.entry;
@@ -77,15 +78,16 @@ import static org.robolectric.Robolectric.shadowOf;
 public class BitmapHunterTest {
 
   @Mock Context context;
-  @Mock Picasso picasso;
   @Mock Cache cache;
   @Mock Cache diskCache;
   @Mock Stats stats;
   @Mock Dispatcher dispatcher;
   @Mock Downloader downloader;
+  Picasso picasso;
 
   @Before public void setUp() throws Exception {
     initMocks(this);
+    picasso = mockPicasso();
   }
 
   @Test public void nullDecodeResponseIsError() throws Exception {
@@ -396,6 +398,12 @@ public class BitmapHunterTest {
     assertThat(requiresInSampleSize(justBounds)).isTrue();
   }
 
+  @Test public void calculateInSampleSizeNoResize() {
+    final BitmapFactory.Options options = new BitmapFactory.Options();
+    calculateInSampleSize(100, 100, 150, 150, options);
+    assertThat(options.inSampleSize).isEqualTo(1);
+  }
+
   @Test public void nullBitmapOptionsIfNoResizing() {
     // No resize must return no bitmap options
     final Request noResize = new Request.Builder(URI_1).build();
@@ -546,20 +554,6 @@ public class BitmapHunterTest {
     ShadowMatrix shadowMatrix = shadowOf(matrix);
 
     assertThat(shadowMatrix.getPreOperations()).containsOnly("scale 0.5 0.5");
-  }
-
-  @Test public void exif90SwapsDimensions() throws Exception {
-    Request data = new Request.Builder(URI_1).build();
-    Bitmap in = Bitmap.createBitmap(30, 40, null);
-    Bitmap out = transformResult(data, in, 90);
-    assertThat(out).hasWidth(40).hasHeight(30);
-  }
-
-  @Test public void exif270SwapsDimensions() throws Exception {
-    Request data = new Request.Builder(URI_1).build();
-    Bitmap in = Bitmap.createBitmap(30, 40, null);
-    Bitmap out = transformResult(data, in, 270);
-    assertThat(out).hasWidth(40).hasHeight(30);
   }
 
   @Test public void reusedBitmapIsNotRecycled() throws Exception {
